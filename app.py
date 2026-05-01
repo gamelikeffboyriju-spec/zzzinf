@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, render_template_string
+from flask import Flask, request, jsonify
 from telethon import TelegramClient, functions
 from telethon.sessions import StringSession
 from telethon.tl.types import UserStatusOnline, UserStatusRecently, UserStatusOffline
@@ -10,10 +10,10 @@ import pytz
 app = Flask(__name__)
 
 # ============================================
-# CONFIGURATION
+# CONFIGURATION - FIXED
 # ============================================
-API_ID = int(os.environ.get('API_ID', '36879151'))
-API_HASH = os.environ.get('API_HASH', '45360a236343352099ffa29570f48700'))
+API_ID = int(os.environ.get('API_ID', '31968824'))
+API_HASH = os.environ.get('API_HASH', '45360a236343352099ffa29570f48700')
 SESSION_STRING = os.environ.get('SESSION_STRING', '')
 
 loop = asyncio.new_event_loop()
