@@ -13,7 +13,7 @@ app = Flask(__name__)
 # ============================================
 API_ID = 36879151
 API_HASH = "45360a236343352099ffa29570f48700"
-SESSION_STRING = ""  # 👈 APNA SESSION STRING DAALO
+SESSION_STRING = "1BVtsOKgBux7BQKnqYHxl4Mokd0dMiGt5Ot027nQ3UYAWYKA15dXgZxpCaG19X4JShXC0oyBECSKiQPW-sQltOyW98nGDYuPqfrGpQqMbCItIAgyJWD7hL07542zRTEw7qZXGMZpf3YvaXfzfqgL_li7ky7s3kZnsUilGkC6JQiH3mTzHkDKs6gpJ90KT3i6FqbxpDbvHLY0h5TXIh9uq_IjmDmWz_QjcJLfNW74rmQTdcfahk5hXyqhULxHj14zAJfOY-uTciyD7tLToPCMNillPIn4Jg6gHUuW2NYDOnSkNhxSTZYQ8pNqykzgypy1MyQVdpkgjgd9bKXTvCTf2Q09zMaVX8fY="  # 👈 APNA SESSION STRING DAALO
 
 loop = asyncio.new_event_loop()
 asyncio.set_event_loop(loop)
