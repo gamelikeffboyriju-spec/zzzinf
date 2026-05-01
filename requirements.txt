@@ -4,4 +4,3 @@ pytz==2024.1
 PySocks==1.7.1
 python-socks==2.4.4
 async-timeout==4.0.3
-aiohttp==3.9.5
