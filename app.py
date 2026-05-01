@@ -14,7 +14,7 @@ app = Flask(__name__)
 # CONFIGURATION
 # ============================================
 API_ID = int(os.environ.get('API_ID', '36879151'))
-API_HASH = os.environ.get('API_HASH', '45360a236343352099ffa29570f48700'))
+API_HASH = os.environ.get('API_HASH', '45360a236343352099ffa29570f48700')
 SESSION_STRING = os.environ.get('SESSION_STRING', '')
 
 # ============================================
