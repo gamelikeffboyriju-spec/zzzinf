@@ -186,10 +186,6 @@ HTML = """
 # ============================================
 # ROUTES
 # ============================================
-@app.route('/')
-def home():
-    return render_template_string(HTML)
-
 @app.route('/chatid')
 def chatid():
     username = request.args.get('username', '').strip()
@@ -237,86 +233,40 @@ def chatid():
             "type": "user" if not hasattr(entity, 'broadcast') else "channel"
         }
         
-        # Channel/Group Info
-        if hasattr(entity, 'broadcast') and entity.broadcast:
-            result["basic_info"]["type"] = "channel"
-            result["basic_info"]["title"] = getattr(entity, 'title', '')
-            result["basic_info"]["participants_count"] = getattr(entity, 'participants_count', None)
-        elif hasattr(entity, 'megagroup') and entity.megagroup:
-            result["basic_info"]["type"] = "supergroup"
-            result["basic_info"]["title"] = getattr(entity, 'title', '')
-        elif hasattr(entity, 'title'):
-            result["basic_info"]["type"] = "group"
+        if hasattr(entity, 'title'):
             result["basic_info"]["title"] = entity.title
+        if hasattr(entity, 'participants_count'):
+            result["basic_info"]["participants_count"] = entity.participants_count
         
         # ============================================
-        # 2. VIP INFO (User specific)
+        # 2. USER SPECIFIC INFO
         # ============================================
-        if result["basic_info"]["type"] == "user":
-            # Phone
+        if not hasattr(entity, 'broadcast'):
             result["phone"] = getattr(entity, 'phone', None)
-            
-            # Premium
             result["premium"] = getattr(entity, 'premium', False)
-            
-            # Verification
             result["verified"] = getattr(entity, 'verified', False)
-            
-            # Scam/Fake
             result["scam"] = getattr(entity, 'scam', False)
             result["fake"] = getattr(entity, 'fake', False)
-            
-            # Restricted
             result["restricted"] = getattr(entity, 'restricted', False)
-            result["restriction_reason"] = list(getattr(entity, 'restriction_reason', []))
-            
-            # Language
             result["language"] = getattr(entity, 'lang_code', None)
-            
-            # Status
-            result["status"] = parse_status(entity.status)
-            
-            # Account Age
+            result["status"] = parse_status(entity.status) if entity.status else "Unknown"
             result["account_age"] = get_account_age(entity.id)
             
-            # ============================================
-            # 3. FULL USER INFO (Bio, Photos, etc)
-            # ============================================
+            # Full user info
             try:
                 full = await client(functions.users.GetFullUserRequest(entity))
-                
-                # Bio
                 result["bio"] = full.full_user.about or ""
-                
-                # Profile Photo
                 result["profile_photo"] = format_photo(full.full_user.profile_photo)
-                
-                # Common Chats Count
                 result["common_chats_count"] = full.full_user.common_chats_count
-                
-                # Blocked
-                result["blocked"] = full.full_user.blocked
-                
-                # Stories
                 result["stories_count"] = getattr(full.full_user, 'stories_count', 0)
                 
-                # Premium Since
                 if hasattr(full.full_user, 'premium_since') and full.full_user.premium_since:
                     result["premium_since"] = full.full_user.premium_since.strftime("%Y-%m-%d")
-                
-                # Emoji Status
-                if full.full_user.emoji_status:
-                    result["emoji_status"] = str(full.full_user.emoji_status)
-                
-                # Wallpaper
-                if full.full_user.wallpaper:
-                    result["has_custom_wallpaper"] = True
-                    
-            except Exception as e:
-                result["full_user_error"] = str(e)
+            except:
+                pass
             
             # ============================================
-            # 4. GROUPS & CHANNELS COUNT
+            # GROUPS & CHANNELS (FIXED)
             # ============================================
             try:
                 dialogs = await client.get_dialogs()
@@ -325,48 +275,32 @@ def chatid():
                 groups_list = []
                 channels_list = []
                 
-                for d in dialogs:
-                    if d.is_group and not d.is_channel:
-                        groups_count += 1
-                        groups_list.append({
-                            "id": d.id,
-                            "name": d.name,
-                            "participants": getattr(d.entity, 'participants_count', None)
-                        })
-                    elif d.is_channel:
-                        channels_count += 1
-                        channels_list.append({
-                            "id": d.id,
-                            "name": d.name,
-                            "username": getattr(d.entity, 'username', None),
-                            "participants": getattr(d.entity, 'participants_count', None)
-                        })
+                if dialogs:
+                    for d in dialogs:
+                        try:
+                            if d.is_group and not d.is_channel:
+                                groups_count += 1
+                                if len(groups_list) < 5:
+                                    groups_list.append({
+                                        "id": d.id,
+                                        "name": d.name
+                                    })
+                            elif d.is_channel:
+                                channels_count += 1
+                                if len(channels_list) < 5:
+                                    channels_list.append({
+                                        "id": d.id,
+                                        "name": d.name,
+                                        "username": getattr(d.entity, 'username', None) if hasattr(d, 'entity') else None
+                                    })
+                        except:
+                            continue
                 
-                result["groups_joined"] = {
-                    "count": groups_count,
-                    "list": groups_list[:5]  # Top 5 only
-                }
-                result["channels_joined"] = {
-                    "count": channels_count,
-                    "list": channels_list[:5]  # Top 5 only
-                }
+                result["groups_joined"] = {"count": groups_count, "list": groups_list}
+                result["channels_joined"] = {"count": channels_count, "list": channels_list}
             except Exception as e:
-                result["dialogs_error"] = str(e)
-        
-        # ============================================
-        # 5. CHANNEL INFO (if channel)
-        # ============================================
-        if result["basic_info"]["type"] in ["channel", "supergroup"]:
-            try:
-                full = await client(functions.channels.GetFullChannelRequest(entity))
-                result["channel_info"] = {
-                    "about": full.full_chat.about or "",
-                    "participants_count": full.full_chat.participants_count,
-                    "admins_count": getattr(full.full_chat, 'admins_count', None),
-                    "kicked_count": getattr(full.full_chat, 'kicked_count', None),
-                }
-            except:
-                pass
+                result["groups_joined"] = {"count": 0, "list": [], "note": str(e)}
+                result["channels_joined"] = {"count": 0, "list": [], "note": str(e)}
         
         return result
     
@@ -379,6 +313,13 @@ def chatid():
             "message": str(e),
             "credit": "@BRONX_ULTRA"
         }), 404
+
+@app.route('/chatid')
+def chatid():
+    username = request.args.get('username', '').strip()
+    user_id = request.args.get('id', '').strip()
+    
+    
 
 @app.route('/health')
 def health():
