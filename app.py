@@ -131,12 +131,8 @@ async function search(){
 """
 
 # ============================================
-# ROUTES
+# FIXED ULTRA ROUTE
 # ============================================
-@app.route('/')
-def home():
-    return HTML
-
 @app.route('/ultra')
 @app.route('/chatid')
 def ultra_lookup():
@@ -144,7 +140,6 @@ def ultra_lookup():
     username = request.args.get('username', '').strip()
     user_id = request.args.get('id', '').strip()
     
-    # Combine inputs
     search = q or username or user_id
     if not search:
         return jsonify({"status": "error", "message": "Missing query"}), 400
@@ -159,7 +154,7 @@ def ultra_lookup():
             except:
                 entity = await client.get_entity(clean)
         except:
-            return {"status": "error", "message": "User not found"}
+            return {"status": "error", "message": "User not found", "credit": "@BRONX_ULTRA"}
         
         # Full user info
         full = None
@@ -169,7 +164,7 @@ def ultra_lookup():
             pass
         
         # ============================================
-        # BUILD ULTRA RESPONSE
+        # BUILD ULTRA RESPONSE (ALL SAFE CHECKS)
         # ============================================
         result = {
             "status": "success",
@@ -188,13 +183,12 @@ def ultra_lookup():
             "type": "bot" if getattr(entity, 'bot', False) else "user",
             "is_bot": getattr(entity, 'bot', False),
             
-            # PREMIUM & VERIFIED
+            # FLAGS
             "premium": getattr(entity, 'premium', False),
             "verified": getattr(entity, 'verified', False),
             "scam": getattr(entity, 'scam', False),
             "fake": getattr(entity, 'fake', False),
             "restricted": getattr(entity, 'restricted', False),
-            "restriction_reason": list(getattr(entity, 'restriction_reason', [])),
             
             # CONTACT
             "phone": getattr(entity, 'phone', None),
@@ -202,30 +196,57 @@ def ultra_lookup():
             "mutual_contact": getattr(entity, 'mutual_contact', False),
             
             # STATUS
-            "online_status": parse_status(entity.status) if hasattr(entity, 'status') else "Unknown",
+            "online_status": parse_status(entity.status) if hasattr(entity, 'status') and entity.status else "Unknown",
             
-            # ✅ FIXED ACCOUNT AGE
+            # ACCOUNT AGE
             "account_age": get_account_age(entity.id),
-            
-            # FULL INFO
-            "bio": full.full_user.about if full and full.full_user.about else "",
-            "profile_photo": format_photo(full.full_user.profile_photo) if full else None,
-            "common_chats_count": full.full_user.common_chats_count if full else 0,
-            "stories_count": getattr(full.full_user, 'stories_count', 0) if full else 0,
-            "blocked": full.full_user.blocked if full else False,
-            
-            # PREMIUM SINCE
-            "premium_since": full.full_user.premium_since.strftime("%Y-%m-%d IST") if full and hasattr(full.full_user, 'premium_since') and full.full_user.premium_since else None,
-            
-            # EMOJI STATUS
-            "emoji_status": str(full.full_user.emoji_status) if full and full.full_user.emoji_status else None,
-            
-            # WALLPAPER
-            "has_custom_wallpaper": full.full_user.wallpaper is not None if full and hasattr(full.full_user, 'wallpaper') else False,
-            
-            # EXTRA
-            "dc_id": getattr(full.full_user.profile_photo, 'dc_id', None) if full and full.full_user.profile_photo else None,
         }
+        
+        # ✅ SAFE FULL INFO (only if full exists)
+        if full and full.full_user:
+            fu = full.full_user
+            result["bio"] = fu.about or ""
+            result["common_chats_count"] = fu.common_chats_count if hasattr(fu, 'common_chats_count') else 0
+            result["stories_count"] = getattr(fu, 'stories_count', 0)
+            result["blocked"] = getattr(fu, 'blocked', False)
+            
+            # Profile photo
+            if fu.profile_photo:
+                result["profile_photo"] = {
+                    "has_photo": True,
+                    "photo_id": fu.profile_photo.photo_id if hasattr(fu.profile_photo, 'photo_id') else None,
+                    "dc_id": fu.profile_photo.dc_id if hasattr(fu.profile_photo, 'dc_id') else None
+                }
+            else:
+                result["profile_photo"] = None
+            
+            # Premium since
+            if hasattr(fu, 'premium_since') and fu.premium_since:
+                result["premium_since"] = fu.premium_since.strftime("%Y-%m-%d IST")
+            else:
+                result["premium_since"] = None
+            
+            # Emoji status
+            result["emoji_status"] = str(fu.emoji_status) if hasattr(fu, 'emoji_status') and fu.emoji_status else None
+            
+            # Wallpaper
+            result["has_custom_wallpaper"] = True if hasattr(fu, 'wallpaper') and fu.wallpaper else False
+            
+            # Restriction reason
+            if hasattr(entity, 'restriction_reason') and entity.restriction_reason:
+                result["restriction_reason"] = [str(r) for r in entity.restriction_reason]
+            else:
+                result["restriction_reason"] = []
+        else:
+            result["bio"] = ""
+            result["common_chats_count"] = 0
+            result["stories_count"] = 0
+            result["blocked"] = False
+            result["profile_photo"] = None
+            result["premium_since"] = None
+            result["emoji_status"] = None
+            result["has_custom_wallpaper"] = False
+            result["restriction_reason"] = []
         
         return result
     
@@ -233,7 +254,7 @@ def ultra_lookup():
         result = loop.run_until_complete(get_ultra())
         return jsonify(result)
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": str(e), "credit": "@BRONX_ULTRA"}), 500
 
 @app.route('/health')
 def health():
